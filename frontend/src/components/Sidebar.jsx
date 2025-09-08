@@ -16,7 +16,6 @@ const Sidebar = () => {
         return [
           { path: '/admin/dashboard', label: 'Dashboard', icon: '📊' },
           { path: '/admin/users', label: 'Manage Users', icon: '👥' },
-          { path: '/admin/reports', label: 'Reports', icon: '📈' },
         ];
       case 'teacher':
         return [

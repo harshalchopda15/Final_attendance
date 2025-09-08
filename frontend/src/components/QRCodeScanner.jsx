@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import QrScanner from 'qr-scanner';
 import { studentAPI } from '../services/api';
 
 const QRCodeScanner = () => {
@@ -8,7 +9,7 @@ const QRCodeScanner = () => {
   const [qrString, setQrString] = useState('');
   const [hasPermission, setHasPermission] = useState(null);
   const videoRef = useRef(null);
-  const streamRef = useRef(null);
+  const qrScannerRef = useRef(null);
 
   // Check for camera permission and initialize scanner
   useEffect(() => {
@@ -34,31 +35,47 @@ const QRCodeScanner = () => {
   const startScanning = async () => {
     try {
       setMessage('');
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { facingMode: 'environment' }
-      });
       
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        streamRef.current = stream;
-        setIsScanning(true);
+      if (!videoRef.current) {
+        setMessage('Video element not found');
+        setMessageType('error');
+        return;
       }
+
+      // Initialize QR Scanner
+      qrScannerRef.current = new QrScanner(
+        videoRef.current,
+        (result) => {
+          console.log('QR Code detected:', result.data);
+          handleQRCodeDetected(result.data);
+        },
+        {
+          onDecodeError: (error) => {
+            // Silently handle decode errors - they're normal during scanning
+            console.log('QR decode error (normal):', error);
+          },
+          highlightScanRegion: true,
+          highlightCodeOutline: true,
+        }
+      );
+
+      await qrScannerRef.current.start();
+      setIsScanning(true);
+      
     } catch (error) {
-      console.error('Error accessing camera:', error);
-      setMessage('Unable to access camera. Please check permissions.');
+      console.error('Error starting QR scanner:', error);
+      setMessage('Unable to start camera. Please check permissions.');
       setMessageType('error');
     }
   };
 
   const stopScanning = () => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-      streamRef.current = null;
+    if (qrScannerRef.current) {
+      qrScannerRef.current.stop();
+      qrScannerRef.current.destroy();
+      qrScannerRef.current = null;
     }
     setIsScanning(false);
-    if (videoRef.current) {
-      videoRef.current.srcObject = null;
-    }
   };
 
   const handleQRCodeDetected = async (qrCode) => {
@@ -102,32 +119,6 @@ const QRCodeScanner = () => {
     setQrString('');
   };
 
-  // Simple QR code detection using canvas (basic implementation)
-  const detectQRCode = () => {
-    if (!videoRef.current || !isScanning) return;
-
-    const video = videoRef.current;
-    const canvas = document.createElement('canvas');
-    const context = canvas.getContext('2d');
-    
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    context.drawImage(video, 0, 0, canvas.width, canvas.height);
-    
-    // This is a simplified QR detection - in a real app you'd use a proper QR library
-    // For now, we'll just show the manual input option
-  };
-
-  // Check for QR codes periodically when scanning
-  useEffect(() => {
-    let interval;
-    if (isScanning) {
-      interval = setInterval(detectQRCode, 1000);
-    }
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [isScanning]);
 
   if (hasPermission === false) {
     return (
@@ -185,15 +176,13 @@ const QRCodeScanner = () => {
         {/* Camera Scanner */}
         <div className="mb-6">
           <div className="relative bg-gray-100 rounded-lg overflow-hidden mb-4" style={{ aspectRatio: '4/3' }}>
-            {isScanning ? (
-              <video
-                ref={videoRef}
-                autoPlay
-                playsInline
-                muted
-                className="w-full h-full object-cover"
-              />
-            ) : (
+            <video
+              ref={videoRef}
+              className="w-full h-full object-cover"
+              style={{ display: isScanning ? 'block' : 'none' }}
+            />
+            
+            {!isScanning && (
               <div className="w-full h-full flex items-center justify-center">
                 <div className="text-center">
                   <div className="text-4xl mb-2">📷</div>
@@ -251,6 +240,7 @@ const QRCodeScanner = () => {
           <h3 className="text-sm font-medium text-blue-800 mb-2">How to use:</h3>
           <ul className="text-xs text-blue-700 space-y-1">
             <li>• Click "Start Scanning" and point camera at QR code</li>
+            <li>• The scanner will automatically detect QR codes</li>
             <li>• Or ask your teacher for the QR code string</li>
             <li>• Enter the string manually in the field above</li>
             <li>• QR codes expire after 30 seconds</li>

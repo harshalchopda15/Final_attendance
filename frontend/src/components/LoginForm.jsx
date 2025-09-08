@@ -131,14 +131,7 @@ const LoginForm = ({ onToggleMode }) => {
           </p>
         </div>
 
-        <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-          <h3 className="text-sm font-medium text-blue-800 mb-2">Demo Credentials:</h3>
-          <div className="text-xs text-blue-700 space-y-1">
-            <p><strong>Admin:</strong> admin@college.edu / admin123</p>
-            <p><strong>Teacher:</strong> sarah.johnson@college.edu / teacher123</p>
-            <p><strong>Student:</strong> alice.smith@college.edu / student123</p>
-          </div>
-        </div>
+        
       </div>
     </div>
   );

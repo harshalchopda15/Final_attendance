@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { teacherAPI } from '../services/api';
+import AttendanceDetailsModal from '../components/AttendanceDetailsModal';
 
 const TeacherClassesPage = () => {
   const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedClass, setSelectedClass] = useState(null);
+  const [showModal, setShowModal] = useState(false);
 
   useEffect(() => {
     fetchClasses();
@@ -20,16 +23,9 @@ const TeacherClassesPage = () => {
     }
   };
 
-  const viewAttendance = async (classId) => {
-    try {
-      const response = await teacherAPI.getClassAttendance(classId);
-      // You could open a modal or navigate to a detailed view
-      console.log('Class attendance:', response.data.data);
-      // For now, we'll just show an alert
-      alert(`Attendance for this class: ${response.data.data.totalPresent} students present`);
-    } catch (error) {
-      console.error('Error fetching class attendance:', error);
-    }
+  const viewAttendance = (classItem) => {
+    setSelectedClass(classItem);
+    setShowModal(true);
   };
 
   if (loading) {
@@ -88,7 +84,7 @@ const TeacherClassesPage = () => {
                     </td>
                     <td className="table-cell">
                       <button
-                        onClick={() => viewAttendance(classItem.id)}
+                        onClick={() => viewAttendance(classItem)}
                         className="text-primary-600 hover:text-primary-900 text-sm font-medium"
                       >
                         View Details
@@ -141,6 +137,17 @@ const TeacherClassesPage = () => {
           </a>
         </div>
       </div>
+
+      {/* Attendance Details Modal */}
+      <AttendanceDetailsModal
+        isOpen={showModal}
+        onClose={() => {
+          setShowModal(false);
+          setSelectedClass(null);
+        }}
+        classId={selectedClass?.id}
+        classInfo={selectedClass}
+      />
     </div>
   );
 };

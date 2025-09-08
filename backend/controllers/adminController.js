@@ -275,21 +275,21 @@ const getAttendanceReports = async (req, res) => {
         // Get overall statistics
         const [overallStats] = await pool.execute(`
             SELECT 
-                COUNT(DISTINCT u.id) as total_students,
-                COUNT(DISTINCT c.id) as total_classes,
-                COUNT(a.id) as total_attendance_records,
-                ROUND(AVG(attendance_percentage), 2) as average_attendance_percentage
-            FROM users u
-            CROSS JOIN classes c
-            LEFT JOIN (
-                SELECT 
-                    student_id,
-                    COUNT(DISTINCT class_id) as attended_classes,
-                    (COUNT(DISTINCT class_id) / (SELECT COUNT(DISTINCT id) FROM classes)) * 100 as attendance_percentage
-                FROM attendance
-                GROUP BY student_id
-            ) a ON u.id = a.student_id
-            WHERE u.role = 'student'
+                (SELECT COUNT(*) FROM users WHERE role = 'student') as total_students,
+                (SELECT COUNT(*) FROM classes) as total_classes,
+                (SELECT COUNT(*) FROM attendance) as total_attendance_records,
+                (
+                    SELECT 
+                        ROUND(AVG(student_attendance.attendance_percentage), 2)
+                    FROM (
+                        SELECT 
+                            COUNT(DISTINCT a.class_id) / NULLIF((SELECT COUNT(DISTINCT id) FROM classes), 0) * 100 as attendance_percentage
+                        FROM users u
+                        LEFT JOIN attendance a ON u.id = a.student_id
+                        WHERE u.role = 'student'
+                        GROUP BY u.id
+                    ) as student_attendance
+                ) as average_attendance_percentage
         `);
 
         // Get attendance by student
@@ -298,12 +298,11 @@ const getAttendanceReports = async (req, res) => {
                 u.id,
                 u.name,
                 u.email,
-                COUNT(DISTINCT c.id) as total_classes,
-                COUNT(a.id) as attended_classes,
-                ROUND((COUNT(a.id) / COUNT(DISTINCT c.id)) * 100, 2) as attendance_percentage
+                (SELECT COUNT(*) FROM classes) as total_classes,
+                COUNT(DISTINCT a.class_id) as attended_classes,
+                ROUND((COUNT(DISTINCT a.class_id) / NULLIF((SELECT COUNT(*) FROM classes), 0)) * 100, 2) as attendance_percentage
             FROM users u
-            CROSS JOIN classes c
-            LEFT JOIN attendance a ON u.id = a.student_id AND c.id = a.class_id
+            LEFT JOIN attendance a ON u.id = a.student_id
             WHERE u.role = 'student'
             GROUP BY u.id, u.name, u.email
             ORDER BY attendance_percentage DESC
@@ -316,7 +315,7 @@ const getAttendanceReports = async (req, res) => {
                 COUNT(DISTINCT c.id) as total_classes,
                 COUNT(DISTINCT a.student_id) as unique_students_attended,
                 COUNT(a.id) as total_attendance_records,
-                ROUND((COUNT(a.id) / (COUNT(DISTINCT c.id) * (SELECT COUNT(*) FROM users WHERE role = 'student'))) * 100, 2) as attendance_percentage
+                ROUND((COUNT(a.id) / NULLIF((COUNT(DISTINCT c.id) * (SELECT COUNT(*) FROM users WHERE role = 'student')), 0)) * 100, 2) as attendance_percentage
             FROM classes c
             LEFT JOIN attendance a ON c.id = a.class_id
             GROUP BY c.subject
@@ -329,7 +328,7 @@ const getAttendanceReports = async (req, res) => {
                 DATE(c.date) as date,
                 COUNT(DISTINCT c.id) as classes_held,
                 COUNT(a.id) as attendance_records,
-                ROUND((COUNT(a.id) / (COUNT(DISTINCT c.id) * (SELECT COUNT(*) FROM users WHERE role = 'student'))) * 100, 2) as daily_attendance_percentage
+                ROUND((COUNT(a.id) / NULLIF((COUNT(DISTINCT c.id) * (SELECT COUNT(*) FROM users WHERE role = 'student')), 0)) * 100, 2) as daily_attendance_percentage
             FROM classes c
             LEFT JOIN attendance a ON c.id = a.class_id
             WHERE c.date >= CURDATE() - INTERVAL 30 DAY

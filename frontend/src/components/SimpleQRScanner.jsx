@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import QrScanner from 'qr-scanner';
 import { studentAPI } from '../services/api';
 
 const SimpleQRScanner = () => {
@@ -9,7 +10,7 @@ const SimpleQRScanner = () => {
   const [hasPermission, setHasPermission] = useState(null);
   const [cameraError, setCameraError] = useState('');
   const videoRef = useRef(null);
-  const streamRef = useRef(null);
+  const qrScannerRef = useRef(null);
 
   useEffect(() => {
     checkCameraSupport();
@@ -32,49 +33,51 @@ const SimpleQRScanner = () => {
       setMessage('');
       setCameraError('');
       
-      console.log('Requesting camera access...');
+      console.log('Starting QR scanner...');
       
-      // Try different camera configurations
-      const constraints = [
-        { video: { facingMode: 'environment' } }, // Back camera
-        { video: { facingMode: 'user' } },        // Front camera
-        { video: true }                           // Any camera
-      ];
-
-      let stream = null;
-      let lastError = null;
-
-      for (const constraint of constraints) {
-        try {
-          console.log('Trying constraint:', constraint);
-          stream = await navigator.mediaDevices.getUserMedia(constraint);
-          console.log('Camera access granted!');
-          break;
-        } catch (error) {
-          console.log('Constraint failed:', error);
-          lastError = error;
-          continue;
-        }
+      if (!videoRef.current) {
+        setMessage('Video element not found');
+        setMessageType('error');
+        return;
       }
 
-      if (!stream) {
-        throw lastError || new Error('No camera available');
-      }
-
-      if (videoRef.current) {
+      // First, try to get camera access directly to ensure video shows
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+          video: { facingMode: 'environment' } 
+        });
         videoRef.current.srcObject = stream;
-        streamRef.current = stream;
-        setIsScanning(true);
-        setHasPermission(true);
-        
-        // Wait for video to load
-        videoRef.current.onloadedmetadata = () => {
-          console.log('Video loaded successfully');
-        };
+        videoRef.current.style.display = 'block';
+        console.log('Camera stream set successfully');
+      } catch (cameraError) {
+        console.log('Direct camera access failed, trying QR scanner only:', cameraError);
       }
+
+      // Initialize QR Scanner
+      qrScannerRef.current = new QrScanner(
+        videoRef.current,
+        (result) => {
+          console.log('QR Code detected:', result.data);
+          handleQRCodeDetected(result.data);
+        },
+        {
+          onDecodeError: (error) => {
+            // Silently handle decode errors - they're normal during scanning
+            console.log('QR decode error (normal):', error);
+          },
+          highlightScanRegion: true,
+          highlightCodeOutline: true,
+        }
+      );
+
+      await qrScannerRef.current.start();
+      setIsScanning(true);
+      setHasPermission(true);
+      
+      console.log('QR Scanner started successfully');
       
     } catch (error) {
-      console.error('Camera error:', error);
+      console.error('QR Scanner error:', error);
       setHasPermission(false);
       
       if (error.name === 'NotAllowedError') {
@@ -87,22 +90,32 @@ const SimpleQRScanner = () => {
         setCameraError(`Camera error: ${error.message}`);
       }
       
-      setMessage('Unable to access camera. Please use manual input below.');
+      setMessage('Unable to start camera. Please use manual input below.');
       setMessageType('error');
     }
   };
 
   const stopScanning = () => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => {
-        track.stop();
-        console.log('Camera track stopped');
-      });
-      streamRef.current = null;
+    if (qrScannerRef.current) {
+      qrScannerRef.current.stop();
+      qrScannerRef.current.destroy();
+      qrScannerRef.current = null;
     }
-    setIsScanning(false);
-    if (videoRef.current) {
+    
+    // Also stop any direct camera stream
+    if (videoRef.current && videoRef.current.srcObject) {
+      const stream = videoRef.current.srcObject;
+      stream.getTracks().forEach(track => track.stop());
       videoRef.current.srcObject = null;
+    }
+    
+    setIsScanning(false);
+  };
+
+  const handleQRCodeDetected = async (qrCode) => {
+    if (qrCode && qrCode.trim()) {
+      stopScanning();
+      await markAttendance(qrCode.trim());
     }
   };
 
@@ -181,7 +194,6 @@ const SimpleQRScanner = () => {
               playsInline
               muted
               className="w-full h-full object-cover"
-              style={{ display: isScanning ? 'block' : 'none' }}
             />
             
             {!isScanning && (
@@ -219,7 +231,7 @@ const SimpleQRScanner = () => {
           {isScanning && (
             <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
               <p className="text-sm text-blue-700">
-                📱 Camera is active! Point it at a QR code. For now, you'll need to manually enter the QR code string below.
+                📱 Camera is active! Point it at a QR code. The scanner will automatically detect and process QR codes.
               </p>
             </div>
           )}
@@ -258,8 +270,8 @@ const SimpleQRScanner = () => {
           <h3 className="text-sm font-medium text-blue-800 mb-2">How to use:</h3>
           <ul className="text-xs text-blue-700 space-y-1">
             <li>• Click "Start Camera" to activate your device camera</li>
-            <li>• Ask your teacher for the QR code string</li>
-            <li>• Enter the string in the field above and click "Mark Attendance"</li>
+            <li>• Point the camera at a QR code - it will be detected automatically</li>
+            <li>• Or ask your teacher for the QR code string and enter it manually</li>
             <li>• QR codes expire after 30 seconds</li>
             <li>• Make sure to allow camera permissions when prompted</li>
           </ul>

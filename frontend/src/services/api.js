@@ -30,10 +30,16 @@ api.interceptors.response.use(
   },
   (error) => {
     if (error.response?.status === 401) {
-      // Token expired or invalid
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      window.location.href = '/login';
+      const reqUrl = error.config?.url || '';
+      const isAuthEndpoint = reqUrl.includes('/auth/login') || reqUrl.includes('/auth/signup');
+      const onLoginPage = typeof window !== 'undefined' && window.location.pathname === '/login';
+
+      // For auth failures on login/signup or when already on login page, do not redirect
+      if (!isAuthEndpoint && !onLoginPage) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }
@@ -52,6 +58,7 @@ export const teacherAPI = {
   getClasses: () => api.get('/teacher/classes'),
   getClassAttendance: (classId) => api.get(`/teacher/attendance/${classId}`),
   getRealTimeAttendance: () => api.get('/teacher/realtime-attendance'),
+  addStudentAttendance: (classId, studentEmail) => api.post(`/teacher/attendance/${classId}/add-student`, { studentEmail }),
 };
 
 // Student API calls

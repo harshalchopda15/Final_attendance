@@ -220,10 +220,83 @@ const getRealTimeAttendance = async (req, res) => {
     }
 };
 
+// Manually add student to attendance (for expired QR codes)
+const addStudentAttendance = async (req, res) => {
+    try {
+        const { classId } = req.params;
+        const { studentEmail } = req.body;
+        const teacherId = req.user.id;
+
+        // Verify that the class belongs to the teacher
+        const [classCheck] = await pool.execute(
+            'SELECT id, subject FROM classes WHERE id = ? AND teacher_id = ?',
+            [classId, teacherId]
+        );
+
+        if (classCheck.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Class not found or access denied'
+            });
+        }
+
+        // Find the student by email
+        const [student] = await pool.execute(
+            'SELECT id, name, email FROM users WHERE email = ? AND role = "student"',
+            [studentEmail]
+        );
+
+        if (student.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Student not found with this email address'
+            });
+        }
+
+        const studentId = student[0].id;
+
+        // Check if student is already marked present for this class
+        const [existingAttendance] = await pool.execute(
+            'SELECT id FROM attendance WHERE class_id = ? AND student_id = ?',
+            [classId, studentId]
+        );
+
+        if (existingAttendance.length > 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'Student is already marked present for this class'
+            });
+        }
+
+        // Add attendance record
+        await pool.execute(
+            'INSERT INTO attendance (class_id, student_id, timestamp) VALUES (?, ?, NOW())',
+            [classId, studentId]
+        );
+
+        res.json({
+            success: true,
+            message: 'Student attendance added successfully',
+            data: {
+                student: student[0],
+                class: classCheck[0]
+            }
+        });
+
+    } catch (error) {
+        console.error('Add student attendance error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error'
+        });
+    }
+};
+
 module.exports = {
     generateQR,
     getTeacherClasses,
     getClassAttendance,
     getRealTimeAttendance,
-    generateQRValidation
+    generateQRValidation,
+    addStudentAttendance
 };

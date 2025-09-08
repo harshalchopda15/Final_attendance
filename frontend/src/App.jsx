@@ -13,7 +13,9 @@ import StudentAttendancePage from './pages/StudentAttendancePage';
 import TeacherDashboard from './pages/TeacherDashboard';
 import TeacherGenerateQRPage from './pages/TeacherGenerateQRPage';
 import TeacherClassesPage from './pages/TeacherClassesPage';
+import TeacherAttendancePage from './pages/TeacherAttendancePage';
 import AdminDashboard from './pages/AdminDashboard';
+import AdminUsersPage from './pages/AdminUsersPage';
 
 // Protected Route Component
 const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -133,6 +135,14 @@ const App = () => {
                 </ProtectedRoute>
               } 
             />
+            <Route 
+              path="/teacher/attendance" 
+              element={
+                <ProtectedRoute allowedRoles={['teacher']}>
+                  <TeacherAttendancePage />
+                </ProtectedRoute>
+              } 
+            />
 
             {/* Admin Routes */}
             <Route 
@@ -143,6 +153,15 @@ const App = () => {
                 </ProtectedRoute>
               } 
             />
+            <Route 
+              path="/admin/users" 
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <AdminUsersPage />
+                </ProtectedRoute>
+              } 
+            />
+            
 
             {/* Default redirect */}
             <Route path="/" element={<Navigate to="/dashboard" replace />} />

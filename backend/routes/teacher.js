@@ -5,7 +5,8 @@ const {
     getTeacherClasses, 
     getClassAttendance, 
     getRealTimeAttendance,
-    generateQRValidation 
+    generateQRValidation,
+    addStudentAttendance
 } = require('../controllers/teacherController');
 const { authenticateToken, authorizeRole } = require('../middleware/auth');
 
@@ -18,5 +19,6 @@ router.post('/generate-qr', generateQRValidation, generateQR);
 router.get('/classes', getTeacherClasses);
 router.get('/attendance/:classId', getClassAttendance);
 router.get('/realtime-attendance', getRealTimeAttendance);
+router.post('/attendance/:classId/add-student', addStudentAttendance);
 
 module.exports = router;

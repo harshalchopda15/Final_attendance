@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { adminAPI } from '../services/api';
 
 const AdminDashboard = () => {
@@ -158,8 +159,8 @@ const AdminDashboard = () => {
       <div className="card p-6">
         <h2 className="text-xl font-semibold text-gray-900 mb-4">Quick Actions</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <a
-            href="/admin/users"
+          <Link
+            to="/admin/users"
             className="flex items-center p-4 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors"
           >
             <span className="text-2xl mr-3">👥</span>
@@ -167,21 +168,12 @@ const AdminDashboard = () => {
               <p className="font-medium text-blue-900">Manage Users</p>
               <p className="text-sm text-blue-600">Add, edit, or remove users</p>
             </div>
-          </a>
+          </Link>
           
-          <a
-            href="/admin/reports"
-            className="flex items-center p-4 bg-green-50 border border-green-200 rounded-lg hover:bg-green-100 transition-colors"
-          >
-            <span className="text-2xl mr-3">📊</span>
-            <div>
-              <p className="font-medium text-green-900">View Reports</p>
-              <p className="text-sm text-green-600">Attendance analytics and charts</p>
-            </div>
-          </a>
+          
 
-          <a
-            href="/admin/users"
+          <Link
+            to="/admin/users"
             className="flex items-center p-4 bg-purple-50 border border-purple-200 rounded-lg hover:bg-purple-100 transition-colors"
           >
             <span className="text-2xl mr-3">➕</span>
@@ -189,7 +181,7 @@ const AdminDashboard = () => {
               <p className="font-medium text-purple-900">Add New User</p>
               <p className="text-sm text-purple-600">Create student or teacher account</p>
             </div>
-          </a>
+          </Link>
         </div>
       </div>
     </div>
