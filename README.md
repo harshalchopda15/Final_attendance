@@ -85,7 +85,7 @@ npm run install-all
 - **MySQL credentials** (as specified in requirements):
   - Host: localhost
   - User: root  
-  - Password: 12345678
+  - Password: Your Password
 
 #### Quick Setup (Windows)
 ```bash
